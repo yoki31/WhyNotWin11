@@ -1,4 +1,4 @@
-[![Build Status](https://img.shields.io/github/workflow/status/rcmaehl/WhyNotWin11/wnw11)](https://github.com/rcmaehl/WhyNotWin11/actions?query=workflow%3AWNW11)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/rcmaehl/WhyNotWin11/wnw11.yml?branch=main)](https://github.com/rcmaehl/WhyNotWin11/actions?query=workflow%3AWNW11)
 [![Download](https://img.shields.io/github/v/release/rcmaehl/WhyNotWin11)](https://github.com/rcmaehl/WhyNotWin11/releases/latest/)
 [![Download count)](https://img.shields.io/github/downloads/rcmaehl/whynotwin11/total?label=Downloads)](https://github.com/rcmaehl/WhyNotWin11/releases/latest/)
 [![Ko-fi](https://img.shields.io/badge/Support%20me%20on-Ko--fi-FF5E5B.svg?logo=ko-fi)](https://ko-fi.com/rcmaehl)
@@ -7,9 +7,9 @@
 [![My Twitter](https://img.shields.io/badge/twitter-545454.svg?logo=twitter)](https://twitter.com/WhyNotWin11)
 
 # WhyNotWin11
-Detection Script to help identify why your PC isn't Windows 11 Release Ready.
+Detection Script to help identify why your PC isn't Windows 11 Release Ready, including Update Checks!
 
-![image](https://user-images.githubusercontent.com/716581/136209273-d6e91e2a-1063-4838-914e-5da5adc142d7.png)
+![image](https://user-images.githubusercontent.com/716581/187039796-f5a2aa29-b367-416c-b3f0-a07e53c8b14c.png)
 ----
 
 ## Download
@@ -30,6 +30,8 @@ Disk (Storage)|5MB Free|100MB Free
 Limitations|DirectX 12 Check Inaccurate|None
 
 \* WhyNotWin11 can be forced to run on Unsupported Systems using the `/force` parameter, no support will be given for this parameter.
+
+Other operating systems are unsupported, last version known to run on Wine is 2.3.0.5.
 
 ## Compiling
 

@@ -5,6 +5,30 @@
 
 #include "GetDiskInfo.au3"
 
+Func _GetBIOSInfo($iFlag = 0)
+	Local Static $sSMBIOSBIOSVersion
+
+	If Not $sSMBIOSBIOSVersion <> "" Then
+		Local $Obj_WMIService = ObjGet('winmgmts:\\.\root\cimv2') ;
+		If (IsObj($Obj_WMIService)) And (Not @error) Then
+			Local $Col_Items = $Obj_WMIService.ExecQuery('Select * from Win32_BIOS')
+
+			Local $Obj_Item
+			For $Obj_Item In $Col_Items
+				$sSMBIOSBIOSVersion = $Obj_Item.SMBIOSBIOSVersion
+			Next
+		Else
+			Return 0
+		EndIf
+	EndIf
+	Switch $iFlag
+		Case 0
+			Return StringStripWS(String($sSMBIOSBIOSVersion), $STR_STRIPTRAILING)
+		Case Else
+			Return 0
+	EndSwitch		
+EndFunc   ;==>_GetBIOSInfo
+
 Func _GetCPUInfo($iFlag = 0)
 	Local Static $sCores
 	Local Static $sThreads
@@ -13,6 +37,7 @@ Func _GetCPUInfo($iFlag = 0)
 	Local Static $sArch
 	Local Static $sCPUs
 	Local Static $sVersion
+	Local Static $sFamily
 
 	If Not $vName <> "" Then
 		Local $Obj_WMIService = ObjGet('winmgmts:\\.\root\cimv2') ;
@@ -26,7 +51,8 @@ Func _GetCPUInfo($iFlag = 0)
 				$vName = $Obj_Item.Name
 				$sSpeed = $Obj_Item.MaxClockSpeed
 				$sArch = $Obj_Item.AddressWidth
-				$sVersion = $Obj_Item.Version
+				$sVersion = $Obj_Item.Caption
+				$sFamily = $Obj_Item.Caption
 			Next
 
 			$Col_Items = $Obj_WMIService.ExecQuery('Select * from Win32_ComputerSystem')
@@ -38,11 +64,15 @@ Func _GetCPUInfo($iFlag = 0)
 		Else
 			Return 0
 		EndIf
-	EndIf
-	If StringInStr($vName, "@") Then
-		$vName = StringSplit($vName, "@", $STR_NOCOUNT)
-		$sSpeed = StringRegExpReplace($vName[1], "[^[:digit:]]", "") & "0"
-		$vName = $vName[0]
+		If StringInStr($vName, "@") Then
+			$vName = StringSplit($vName, "@", $STR_NOCOUNT)
+			$sSpeed = StringRegExpReplace($vName[1], "[^[:digit:]]", "") & "0"
+			$vName = $vName[0]
+		EndIf
+		If StringRegExp($sFamily, "[^0-9]") Then
+				$sFamily = StringRegExp($sFamily, "Family\s\d+\sModel", $STR_REGEXPARRAYMATCH)[0]
+				$sFamily = StringRegExpReplace($sFamily, "[^0-9]", "")
+		EndIf
 	EndIf
 	Switch $iFlag
 		Case 0
@@ -57,6 +87,8 @@ Func _GetCPUInfo($iFlag = 0)
 			Return Number($sArch)
 		Case 5
 			Return String($sVersion)
+		Case 6
+			Return $sFamily
 		Case Else
 			Return 0
 	EndSwitch
@@ -167,9 +199,17 @@ Func _GetGPUInfo($iFlag = 0)
 
 			Local $Obj_Item
 			For $Obj_Item In $Col_Items
-				If $Obj_Item.Name = "Citrix Indirect Display Adapter" Then ContinueLoop
-				$sName &= $Obj_Item.Name & ", "
-				$sMemory = $Obj_Item.AdapterRAM
+				Switch $Obj_Item.Name
+					Case "Citrix Indirect Display Adapter"
+						ContinueCase
+					Case "DisplayLink USB Device"
+						ContinueCase
+					Case "Microsoft Remote Display Adapter"
+						ContinueLoop
+					Case Else
+						$sName &= $Obj_Item.Name & ", "
+						$sMemory = $Obj_Item.AdapterRAM
+				EndSwitch
 			Next
 		Else
 			Return 0
@@ -184,6 +224,48 @@ Func _GetGPUInfo($iFlag = 0)
 			Return 0
 	EndSwitch
 EndFunc   ;==>_GetGPUInfo
+
+Func _GetMotherboardInfo($iFlag = 0)
+	Local Static $sManufacturer
+	Local Static $sProduct
+
+	If Not $sManufacturer <> "" Then
+		Local $Obj_WMIService = ObjGet('winmgmts:\\.\root\cimv2') ;
+		If (IsObj($Obj_WMIService)) And (Not @error) Then
+			Local $Col_Items = $Obj_WMIService.ExecQuery('Select * from Win32_Baseboard')
+
+			Local $Obj_Item
+			For $Obj_Item In $Col_Items
+				$sManufacturer = $Obj_Item.Manufacturer
+				$sProduct = $Obj_Item.Product
+			Next
+		Else
+			Return 0
+		EndIf
+		Switch $sManufacturer
+			Case "ASUSTek COMPUTER INC."
+				$sManufacturer = "ASUS"
+			Case "Gigabyte Technology Co., Ltd"
+				$sManufacturer = "Gigabyte"
+			Case "Microsoft Corporation"
+				$sManufacturer = "Microsoft"
+			Case "Micro-Star International Co., Ltd."
+				$sManufacturer = "MSI"
+			Case "Oracle Corporation"
+				$sManufacturer = "Oracle"
+			Case Else
+				;;;
+		EndSwitch
+	EndIf
+	Switch $iFlag
+		Case 0
+			Return String($sManufacturer)
+		Case 1
+			Return String($sProduct)
+		Case Else
+			Return 0
+	EndSwitch
+EndFunc
 
 Func _GetTPMInfo($iFlag = 0)
 	Local Static $sActivated
@@ -218,7 +300,6 @@ Func _GetTPMInfo($iFlag = 0)
 				Return 0
 		EndSwitch
 	Else
-
 		If Not $sPresent <> "" Then
 			$Obj_WMIService = ObjGet('winmgmts:\\.\root\cimv2') ;
 			If (IsObj($Obj_WMIService)) And (Not @error) Then

@@ -30,20 +30,33 @@ Func _BootCheck()
 	EndSwitch
 EndFunc   ;==>_BootCheck
 
-Func _CPUNameCheck($sCPU, $sVersion)
+Func _CPUNameCheck($sCPU, $sFamily, $sVersion, $sWinFU = False)
+
+	If $sWinFU Then
+		Local $sReg = RegRead("HKLM64\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\TargetVersionUpgradeExperienceIndicators\" & $sWinFU, "RedReason")
+		If @error Then
+			SetError(1, 0, False)
+		Else
+			Return Not StringInStr($sReg, "CpuFms")
+		EndIf
+	EndIf
+
 	Local $iLines, $sLine, $ListFile
+
 	Select
 		Case StringInStr($sCPU, "AMD")
+			If $sFamily >= 25 Then Return True
 			If StringInStr($sCPU, "1600") And StringInStr($sVersion, "Stepping 2") Then Return True ; 1600AF
 			$ListFile = "\WhyNotWin11\SupportedProcessorsAMD.txt"
 		Case StringInStr($sCPU, "Intel")
+			If $sFamily = 6 And StringRegExp($sVersion, ".*Model\s(1[6-9][0-9]|2[0-9]{2})\s.*") Then Return True
 			$ListFile = "\WhyNotWin11\SupportedProcessorsIntel.txt"
 		Case StringInStr($sCPU, "SnapDragon") Or StringInStr($sCPU, "Microsoft")
 			$ListFile = "\WhyNotWin11\SupportedProcessorsQualcomm.txt"
 	EndSelect
 
 	If $ListFile = Null Then
-		Return False
+		Return SetError(1, 0, False)
 	Else
 		$iLines = _FileCountLines(@LocalAppDataDir & $ListFile)
 		If @error Then Return SetError(1, 0, False)
@@ -64,7 +77,17 @@ Func _CPUNameCheck($sCPU, $sVersion)
 	EndIf
 EndFunc   ;==>_CPUNameCheck
 
-Func _CPUCoresCheck($iCores, $iThreads)
+Func _CPUCoresCheck($iCores, $iThreads, $sWinFU = False)
+
+	If $sWinFU Then
+		Local $sReg = RegRead("HKLM64\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\TargetVersionUpgradeExperienceIndicators\" & $sWinFU, "RedReason")
+		If @error Then
+			Return SetError(1, 0, False)
+		Else
+			Return Not StringInStr($sReg, "Cpu")
+		EndIf
+	EndIf
+
 	If $iCores >= 2 Or $iThreads >= 2 Then
 		Return True
 	Else
@@ -72,7 +95,17 @@ Func _CPUCoresCheck($iCores, $iThreads)
 	EndIf
 EndFunc   ;==>_CPUCoresCheck
 
-Func _CPUSpeedCheck()
+Func _CPUSpeedCheck($sWinFU = False)
+
+	If $sWinFU Then
+		Local $sReg = RegRead("HKLM64\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\TargetVersionUpgradeExperienceIndicators\" & $sWinFU, "RedReason")
+		If @error Then
+			Return SetError(1, 0, False)
+		Else
+			Return Not StringInStr($sReg, "Cpu")
+		EndIf
+	EndIf
+
 	Select
 		Case _GetCPUInfo(3) >= 1000
 			Return SetError(0, 0, True)
@@ -190,8 +223,17 @@ Func _InternetCheck()
 	Return _WinAPI_IsInternetConnected()
 EndFunc
 
-Func _MemCheck()
+Func _MemCheck($sWinFU = False)
 	Local Static $vMem
+
+	If $sWinFU Then
+		Local $sReg = RegRead("HKLM64\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\TargetVersionUpgradeExperienceIndicators\" & $sWinFU, "RedReason")
+		If @error Then
+			Return SetError(1, 0, False)
+		Else
+			Return Not StringInStr($sReg, "Memory")
+		EndIf
+	EndIf
 
 	If Not $vMem <> "" Then
 		$vMem = DllCall(@SystemDir & "\Kernel32.dll", "int", "GetPhysicallyInstalledSystemMemory", "int*", "")
@@ -216,9 +258,20 @@ Func _MemCheck()
 	EndIf
 EndFunc   ;==>_MemCheck
 
-Func _SecureBootCheck()
+Func _SecureBootCheck($sWinFU = False)
+
+	If $sWinFU Then
+		Local $sReg = RegRead("HKLM64\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\TargetVersionUpgradeExperienceIndicators\" & $sWinFU, "RedReason")
+		If @error Then
+			Return SetError(1, 0, False)
+		Else
+			Return Not StringInStr($sReg, "UefiSecureBoot")
+		EndIf
+	EndIf
+
 	Local $sSecureBoot = RegRead("HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\SecureBoot\State", "UEFISecureBootEnabled")
 	If @error Then $sSecureBoot = 999
+
 	Switch $sSecureBoot
 		Case 1
 			Return SetError(0, 1, True)
@@ -229,15 +282,31 @@ Func _SecureBootCheck()
 	EndSwitch
 EndFunc   ;==>_SecureBootCheck
 
-Func _SpaceCheck()
-	Local $sWindows = EnvGet("SystemDrive")
+Func _SpaceCheck($sDrive = Null, $sWinFU = False)
+
+	If $sWinFU Then
+		Local $sReg = RegRead("HKLM64\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\TargetVersionUpgradeExperienceIndicators\" & $sWinFU, "RedReason")
+		If @error Then
+			Return SetError(1, 0, False)
+		Else
+			Return Not StringInStr($sReg, "SystemDriveSize")
+		EndIf
+	EndIf
+
+	Local $sWindows
+
+	If $sDrive = Null Then
+		$sWindows = EnvGet("SystemDrive")
+	Else
+		$sWindows = $sDrive
+	EndIf
 
 	Local $iFree = Round(DriveSpaceTotal($sWindows) / 1024, 0)
 	Local $aDrives = DriveGetDrive($DT_FIXED)
 	Local $iDrives = 0
 
 	For $iLoop = 1 To $aDrives[0] Step 1
-		If Round(DriveSpaceTotal($aDrives[$iLoop]) / 1024, 0) >= 64 Then $iDrives += 1
+		If Round(DriveSpaceTotal($aDrives[$iLoop]) / 1024, 0) >= 60 Then $iDrives += 1
 	Next
 
 	If $iFree >= 64 Then
@@ -247,7 +316,17 @@ Func _SpaceCheck()
 	EndIf
 EndFunc   ;==>_SpaceCheck
 
-Func _TPMCheck()
+Func _TPMCheck($sWinFU = False)
+
+	If $sWinFU Then
+		Local $sReg = RegRead("HKLM64\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\TargetVersionUpgradeExperienceIndicators\" & $sWinFU, "RedReason")
+		If @error Then
+			Return SetError(1, 0, False)
+		Else
+			Return Not StringInStr($sReg, "Tpm")
+		EndIf
+	EndIf
+
 	Select
 		Case _GetTPMInfo(0) = False
 			ContinueCase
